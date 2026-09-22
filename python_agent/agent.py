@@ -119,11 +119,30 @@ def execute_tool(name: str, args: dict) -> str:
 
     return f"Unknown tool: {name}"
 
-def run_agent_turn(prompt: str, api_key: str = None) -> str:
+def run_agent_turn(prompt: str, api_key: str = None, use_ollama: bool = False, ollama_model: str = "llama3.2") -> str:
     """Executes a single agent turn with reasoning and tool execution."""
     active_key = api_key or os.environ.get("OPENAI_API_KEY", "").strip()
+    is_ollama = use_ollama or os.environ.get("USE_OLLAMA", "").lower() in ["1", "true", "yes"]
 
     print(f"\n[USER PROMPT] {prompt}")
+
+    # Ollama SDK invocation if requested
+    if is_ollama:
+        try:
+            import ollama
+            print(f"[OLLAMA SDK] Connecting to local Ollama (Model: {ollama_model})...")
+            res = ollama.chat(
+                model=ollama_model,
+                messages=[
+                    {"role": "system", "content": "You are OpenChat AI Agent. Provide clear, accurate, and concise answers."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            ans = res["message"]["content"]
+            print("\n[FINAL ANSWER]")
+            return ans
+        except Exception as e:
+            print(f"[OLLAMA ERROR] {e}. Ensure Ollama is running ('ollama run {ollama_model}').")
 
     if not active_key:
         print("[AGENT REASONING] No OPENAI_API_KEY detected. Running simulated local agent loop.")
@@ -205,6 +224,8 @@ def main():
     parser = argparse.ArgumentParser(description="ZeeNexus Python Agent CLI")
     parser.add_argument("--test", action="store_true", help="Run automated test suite")
     parser.add_argument("--prompt", type=str, help="Single prompt execution")
+    parser.add_argument("--ollama", action="store_true", help="Use local Ollama SDK instead of OpenAI")
+    parser.add_argument("--model", type=str, default="llama3.2", help="Model name (default: llama3.2)")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -225,7 +246,7 @@ def main():
         return
 
     if args.prompt:
-        res = run_agent_turn(args.prompt)
+        res = run_agent_turn(args.prompt, use_ollama=args.ollama, ollama_model=args.model)
         print(res)
         return
 
@@ -238,7 +259,7 @@ def main():
             if user_input.lower() in ["exit", "quit"]:
                 print("Goodbye from ZeeNexus Agent!")
                 break
-            ans = run_agent_turn(user_input)
+            ans = run_agent_turn(user_input, use_ollama=args.ollama, ollama_model=args.model)
             print(f"Agent > {ans}\n")
         except (KeyboardInterrupt, EOFError):
             print("\nExiting...")

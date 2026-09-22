@@ -5,7 +5,7 @@ import { Header } from "@/components/Header";
 import { Sidebar, ChatSession } from "@/components/Sidebar";
 import { ChatMessage, MessageItem } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
-import { ApiKeyModal } from "@/components/ApiKeyModal";
+import { ApiKeyModal, ProviderConfig } from "@/components/ApiKeyModal";
 import { ReasoningStep } from "@/components/ReasoningCard";
 import { CHAT_MODES, ModelPersonaId } from "@/lib/agent/prompts";
 import { AiBackground } from "@/components/AiBackground";
@@ -18,6 +18,7 @@ export default function Home() {
   const [currentPersonaId, setCurrentPersonaId] = useState<ModelPersonaId>("default_assistant");
   const [model, setModel] = useState("gpt-4o-mini");
   const [apiKey, setApiKey] = useState("");
+  const [baseURL, setBaseURL] = useState("");
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -31,6 +32,12 @@ export default function Home() {
     try {
       const savedKey = localStorage.getItem("zeenexus_openai_key");
       if (savedKey) setApiKey(savedKey);
+
+      const savedBase = localStorage.getItem("zeenexus_base_url");
+      if (savedBase) setBaseURL(savedBase);
+
+      const savedModel = localStorage.getItem("zeenexus_model");
+      if (savedModel) setModel(savedModel);
 
       const savedSessions = localStorage.getItem("zeenexus_chat_sessions");
       if (savedSessions) {
@@ -69,14 +76,22 @@ export default function Home() {
     }
   };
 
-  const handleSaveApiKey = (newKey: string) => {
-    setApiKey(newKey);
-    localStorage.setItem("zeenexus_openai_key", newKey);
+  const handleSaveConfig = (cfg: ProviderConfig) => {
+    setApiKey(cfg.apiKey);
+    setBaseURL(cfg.baseURL);
+    setModel(cfg.model);
+    localStorage.setItem("zeenexus_openai_key", cfg.apiKey);
+    localStorage.setItem("zeenexus_base_url", cfg.baseURL);
+    localStorage.setItem("zeenexus_model", cfg.model);
   };
 
-  const handleClearApiKey = () => {
+  const handleClearConfig = () => {
     setApiKey("");
+    setBaseURL("");
+    setModel("gpt-4o-mini");
     localStorage.removeItem("zeenexus_openai_key");
+    localStorage.removeItem("zeenexus_base_url");
+    localStorage.removeItem("zeenexus_model");
   };
 
   const handleNewChat = () => {
@@ -181,6 +196,7 @@ export default function Home() {
           })),
           personaId: currentPersonaId,
           apiKey: apiKey.trim(),
+          baseURL: baseURL.trim(),
           model: model,
         }),
       });
@@ -309,7 +325,7 @@ export default function Home() {
         onNewChat={handleNewChat}
         onDeleteSession={handleDeleteSession}
         onOpenKeyModal={() => setIsKeyModalOpen(true)}
-        hasKey={Boolean(apiKey)}
+        hasKey={Boolean(apiKey || baseURL)}
       />
 
       {/* Main Chat Area */}
@@ -319,7 +335,7 @@ export default function Home() {
           currentPersonaId={currentPersonaId}
           onSelectPersona={setCurrentPersonaId}
           onOpenKeyModal={() => setIsKeyModalOpen(true)}
-          hasCustomKey={Boolean(apiKey)}
+          hasCustomKey={Boolean(apiKey || baseURL)}
           onClearChat={handleClearChat}
           onNewChat={handleNewChat}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -423,13 +439,13 @@ export default function Home() {
         </footer>
       </div>
 
-      {/* API Key Modal */}
+      {/* API Key / Provider Modal */}
       <ApiKeyModal
         isOpen={isKeyModalOpen}
         onClose={() => setIsKeyModalOpen(false)}
-        apiKey={apiKey}
-        onSaveKey={handleSaveApiKey}
-        onClearKey={handleClearApiKey}
+        config={{ apiKey, baseURL, model }}
+        onSaveConfig={handleSaveConfig}
+        onClearConfig={handleClearConfig}
       />
     </div>
   );

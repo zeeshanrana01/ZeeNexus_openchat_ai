@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { Ollama } from "ollama";
 import { AGENT_TOOLS, executeTool } from "@/lib/agent/tools";
 import { CHAT_MODES, ModelPersonaId } from "@/lib/agent/prompts";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
@@ -13,11 +14,13 @@ interface ChatRequestBody {
     content: string;
   }>;
   personaId?: ModelPersonaId;
+  provider?: "openai" | "ollama" | "groq" | "openrouter";
   apiKey?: string;
+  baseURL?: string;
   model?: string;
 }
 
-// Fallback response when no OpenAI API key is supplied
+// Fallback response when no active provider or key is available
 function generateSimulationResponse(userPrompt: string, personaId: ModelPersonaId) {
   const q = userPrompt.toLowerCase();
   const persona = CHAT_MODES[personaId] || CHAT_MODES.default_assistant;
@@ -34,50 +37,33 @@ function generateSimulationResponse(userPrompt: string, personaId: ModelPersonaI
 
     responseText = `Here is a clean implementation based on your request:\n\n` +
       `\`\`\`python\n` +
-      `def solve_task(data: list) -> dict:\n` +
+      `def process_data(items: list) -> dict:\n` +
       `    """\n` +
-      `    Processes input data and returns structured metrics.\n` +
+      `    Processes items and computes aggregate statistics.\n` +
       `    """\n` +
-      `    if not data:\n` +
-      `        return {"status": "empty", "total": 0}\n` +
+      `    if not items:\n` +
+      `        return {"count": 0, "total": 0}\n` +
       `    \n` +
-      `    total = sum(data)\n` +
-      `    average = total / len(data)\n` +
       `    return {\n` +
-      `        "status": "success",\n` +
-      `        "count": len(data),\n` +
-      `        "total": total,\n` +
-      `        "average": average\n` +
+      `        "count": len(items),\n` +
+      `        "total": sum(items),\n` +
+      `        "average": sum(items) / len(items)\n` +
       `    }\n\n` +
-      `# Example usage:\n` +
-      `sample = [10, 25, 45, 80, 100]\n` +
-      `print(solve_task(sample))\n` +
+      `print(process_data([10, 20, 30, 40]))\n` +
       `\`\`\`\n\n` +
-      `### Key Points:\n` +
-      `- **Type Annotations**: Explicit type hints improve code maintainability.\n` +
-      `- **Defensive Handling**: Checks for empty inputs to avoid division by zero.\n` +
-      `- **Performance**: Linear $O(n)$ complexity.\n\n` +
-      `> 💡 *Note: To stream live answers directly from OpenAI GPT-4o, add your \`OPENAI_API_KEY\` in \`.env.local\` or click the Key icon in the top header.*`;
+      `> 💡 *Ready to run real models? Choose **Ollama (Local Free)** or **OpenAI** in Key Settings above!*`;
   } else if (q.includes("calculate") || q.includes("+") || q.includes("*") || q.includes("^") || q.includes("/")) {
     toolName = "calculate_expression";
     toolArgs = JSON.stringify({ expression: "2 ** 16" });
     toolResult = `Result = 65536`;
-    responseText = `The calculated result is:\n\n\`\`\`text\n${toolResult}\n\`\`\`\n\nIs there anything else you would like to compute or analyze?`;
-  } else if (q.includes("time") || q.includes("date")) {
-    toolName = "get_system_time";
-    toolArgs = JSON.stringify({ timezone: "Local" });
-    const now = new Date();
-    toolResult = JSON.stringify({ time: now.toLocaleString(), iso: now.toISOString() });
-    responseText = `The current system time is **${now.toLocaleString()}** (${Intl.DateTimeFormat().resolvedOptions().timeZone}).`;
+    responseText = `The calculated result is:\n\n\`\`\`text\n${toolResult}\n\`\`\``;
   } else {
-    responseText = `Hello! I'm **${persona.name}**, your AI assistant.\n\n` +
-      `I can help you with:\n` +
-      `- 💻 **Writing & Debugging Code** (Python, TypeScript, React, Next.js, and more)\n` +
-      `- 🧠 **Explaining Complex Concepts** & problem solving\n` +
-      `- ✍️ **Drafting Documents**, emails, and articles\n` +
-      `- ⚡ **Executing Tools & Calculations**\n\n` +
-      `How can I assist you today?\n\n` +
-      `> 🔑 *To connect to live OpenAI GPT-4o / GPT-4o-mini models, click the **Key Settings** button at the top right or set \`OPENAI_API_KEY\` in \`.env.local\`.*`;
+    responseText = `Hello! I'm **${persona.name}**.\n\n` +
+      `You can connect this app directly to:\n` +
+      `1. 🦙 **Ollama SDK (100% Free Local)**: Run \`ollama run llama3.2\` on your machine, then choose Ollama in Key Settings.\n` +
+      `2. ⚡ **OpenAI SDK**: Use your OpenAI key for GPT-4o.\n` +
+      `3. 🌐 **Groq / OpenRouter**: Ultra-fast free cloud keys.\n\n` +
+      `Click the **Key Settings** button at the top right to get started!`;
   }
 
   return { toolName, toolArgs, toolResult, responseText };
@@ -86,20 +72,107 @@ function generateSimulationResponse(userPrompt: string, personaId: ModelPersonaI
 export async function POST(req: NextRequest) {
   try {
     const body: ChatRequestBody = await req.json();
-    const { messages, personaId = "default_assistant", apiKey: clientApiKey, model = "gpt-4o-mini" } = body;
+    const {
+      messages,
+      personaId = "default_assistant",
+      provider = "openai",
+      apiKey: clientApiKey,
+      baseURL: clientBaseUrl,
+      model: clientModel,
+    } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "Messages array is required." }, { status: 400 });
     }
 
-    const activeApiKey = clientApiKey?.trim() || process.env.OPENAI_API_KEY?.trim();
+    const isOllamaSelected =
+      provider === "ollama" ||
+      clientBaseUrl?.includes("11434") ||
+      Boolean(process.env.OLLAMA_HOST);
+
+    const activeBaseUrl = clientBaseUrl?.trim() || (isOllamaSelected ? "http://127.0.0.1:11434" : undefined);
+    const activeApiKey = clientApiKey?.trim() || process.env.OPENAI_API_KEY?.trim() || "";
+    const activeModel = clientModel?.trim() || (isOllamaSelected ? "llama3.2" : "gpt-4o-mini");
     const persona = CHAT_MODES[personaId] || CHAT_MODES.default_assistant;
     const latestUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
 
     const encoder = new TextEncoder();
 
-    // 1. Fallback when no API Key is provided
-    if (!activeApiKey) {
+    // 1. If using the Official OLLAMA SDK (Local, free, open-source)
+    if (isOllamaSelected) {
+      const ollamaHost = activeBaseUrl?.replace(/\/v1\/?$/, "") || "http://127.0.0.1:11434";
+      const ollamaClient = new Ollama({ host: ollamaHost });
+
+      const ollamaMessages = [
+        { role: "system", content: persona.systemPrompt },
+        ...messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+      ];
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "reasoning",
+                  thought: `Connecting to local Ollama SDK at ${ollamaHost} (Model: ${activeModel})...`,
+                })}\n\n`
+              )
+            );
+
+            // Stream response using official Ollama chat SDK
+            const response = await ollamaClient.chat({
+              model: activeModel,
+              messages: ollamaMessages,
+              stream: true,
+            });
+
+            for await (const part of response) {
+              if (part.message?.content) {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      type: "content",
+                      text: part.message.content,
+                    })}\n\n`
+                  )
+                );
+              }
+            }
+
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: "done", provider: "ollama" })}\n\n`)
+            );
+            controller.close();
+          } catch (ollamaError: unknown) {
+            const err = ollamaError instanceof Error ? ollamaError.message : "Ollama connection error";
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: "error",
+                  message: `[Ollama SDK] ${err}. Make sure Ollama is running ('ollama serve' or 'ollama run ${activeModel}') on ${ollamaHost}.`,
+                })}\n\n`
+              )
+            );
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+        },
+      });
+    }
+
+    // 2. If NO OpenAI key or BaseURL is provided -> Simulation Fallback
+    if (!activeApiKey && !activeBaseUrl) {
       const sim = generateSimulationResponse(latestUserMessage, personaId);
 
       const stream = new ReadableStream({
@@ -114,8 +187,7 @@ export async function POST(req: NextRequest) {
                 })}\n\n`
               )
             );
-
-            await new Promise((r) => setTimeout(r, 300));
+            await new Promise((r) => setTimeout(r, 250));
 
             controller.enqueue(
               encoder.encode(
@@ -126,7 +198,6 @@ export async function POST(req: NextRequest) {
                 })}\n\n`
               )
             );
-
             await new Promise((r) => setTimeout(r, 200));
           }
 
@@ -155,8 +226,11 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 2. Live OpenAI API Streaming
-    const openai = new OpenAI({ apiKey: activeApiKey });
+    // 3. Official OPENAI SDK (OpenAI, Groq, OpenRouter)
+    const openai = new OpenAI({
+      apiKey: activeApiKey || "dummy-key",
+      baseURL: activeBaseUrl,
+    });
 
     const formattedMessages: ChatCompletionMessageParam[] = [
       {
@@ -172,13 +246,22 @@ export async function POST(req: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const response = await openai.chat.completions.create({
-            model: model || "gpt-4o-mini",
-            messages: formattedMessages,
-            tools: AGENT_TOOLS,
-            tool_choice: "auto",
-            stream: true,
-          });
+          let response;
+          try {
+            response = await openai.chat.completions.create({
+              model: activeModel,
+              messages: formattedMessages,
+              tools: AGENT_TOOLS,
+              tool_choice: "auto",
+              stream: true,
+            });
+          } catch {
+            response = await openai.chat.completions.create({
+              model: activeModel,
+              messages: formattedMessages,
+              stream: true,
+            });
+          }
 
           let toolCallsAcc: Array<{
             id: string;
@@ -265,7 +348,7 @@ export async function POST(req: NextRequest) {
             }
 
             const secondPassStream = await openai.chat.completions.create({
-              model: model || "gpt-4o-mini",
+              model: activeModel,
               messages: [...formattedMessages, ...toolMessages],
               stream: true,
             });
@@ -287,7 +370,7 @@ export async function POST(req: NextRequest) {
           );
           controller.close();
         } catch (error: unknown) {
-          const errMsg = error instanceof Error ? error.message : "OpenAI API streaming error";
+          const errMsg = error instanceof Error ? error.message : "Streaming error";
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
