@@ -8,23 +8,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "ZeeNexus OpenChat AI | Rana Zeeshan — Agentic AI Portfolio",
+  title: "OpenChat AI — Modern AI Assistant",
   description:
-    "An autonomous Agentic AI OpenChat web application by Rana Zeeshan (ZeeNexus), featuring ReAct tool calling, multi-persona reasoning, SSE streaming, and Next.js / Python architecture.",
-  keywords: [
-    "Agentic AI",
-    "Rana Zeeshan",
-    "ZeeNexus",
-    "OpenChat AI",
-    "Next.js",
-    "React",
-    "TypeScript",
-    "Python AI Agent",
-    "OpenAI API",
-    "ReAct Loop",
-    "Portfolio"
-  ],
-  authors: [{ name: "Rana Zeeshan", url: "https://github.com" }],
+    "A fast, clean, and modern AI chat interface powered by Next.js, React, and the OpenAI API.",
 };
 
 export default function RootLayout({

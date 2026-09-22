@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Copy, Check, User, Bot, Sparkles } from "lucide-react";
+import { Copy, Check, Sparkles, User } from "lucide-react";
 import { ReasoningCard, ReasoningStep } from "./ReasoningCard";
 
 export interface MessageItem {
@@ -11,8 +11,6 @@ export interface MessageItem {
   createdAt?: string;
   reasoningSteps?: ReasoningStep[];
   isStreaming?: boolean;
-  personaAvatar?: string;
-  personaName?: string;
 }
 
 interface ChatMessageProps {
@@ -33,15 +31,15 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
   };
 
   return (
-    <div className="my-3 rounded-lg overflow-hidden border border-slate-700/80 bg-[#0d131f] text-slate-200">
-      <div className="flex items-center justify-between px-3.5 py-1.5 bg-[#151f33] border-b border-slate-800 text-[11px] text-slate-400">
-        <span className="font-mono text-cyan-400 uppercase tracking-wider font-semibold">
+    <div className="my-3 rounded-xl overflow-hidden border border-slate-750 bg-[#0d121c] text-slate-200">
+      <div className="flex items-center justify-between px-4 py-1.5 bg-[#151d2e] border-b border-slate-800 text-[11px] text-slate-400">
+        <span className="font-mono text-slate-300 font-semibold uppercase">
           {language || "code"}
         </span>
         <button
           onClick={handleCopy}
           type="button"
-          className="flex items-center gap-1 hover:text-emerald-400 transition-colors"
+          className="flex items-center gap-1 hover:text-white transition-colors"
         >
           {copied ? (
             <>
@@ -56,22 +54,20 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
           )}
         </button>
       </div>
-      <div className="p-3.5 overflow-x-auto text-[13px] font-mono leading-relaxed bg-[#0b101a]">
+      <div className="p-4 overflow-x-auto text-[13px] font-mono leading-relaxed bg-[#0b0f17]">
         <pre>{code}</pre>
       </div>
     </div>
   );
 }
 
-// Clean lightweight Markdown renderer without bulky dependencies
 function FormattedContent({ text }: { text: string }) {
   if (!text) return null;
 
-  // Split by code blocks
   const parts = text.split(/(```[\s\S]*?```)/g);
 
   return (
-    <div className="prose-custom space-y-2 text-[14px] leading-relaxed">
+    <div className="prose-custom space-y-2 text-[14px] leading-relaxed text-slate-200">
       {parts.map((part, index) => {
         if (part.startsWith("```") && part.endsWith("```")) {
           const lines = part.slice(3, -3).trim().split("\n");
@@ -89,7 +85,6 @@ function FormattedContent({ text }: { text: string }) {
           return <CodeBlock key={index} language={language} code={codeContent} />;
         }
 
-        // Standard text lines
         const paragraphs = part.split("\n\n");
         return (
           <React.Fragment key={index}>
@@ -97,11 +92,9 @@ function FormattedContent({ text }: { text: string }) {
               const trimmed = para.trim();
               if (!trimmed) return null;
 
-              // Headings
               if (trimmed.startsWith("### ")) {
                 return (
-                  <h3 key={pIdx} className="text-base font-bold text-white mt-3 mb-1.5 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <h3 key={pIdx} className="text-base font-bold text-white mt-3 mb-1.5">
                     {renderInline(trimmed.replace(/^###\s+/, ""))}
                   </h3>
                 );
@@ -121,16 +114,14 @@ function FormattedContent({ text }: { text: string }) {
                 );
               }
 
-              // Blockquotes
               if (trimmed.startsWith("> ")) {
                 return (
-                  <blockquote key={pIdx} className="border-l-2 border-emerald-500 pl-3 italic text-slate-300 my-2">
+                  <blockquote key={pIdx} className="border-l-2 border-slate-600 pl-3 italic text-slate-400 my-2">
                     {renderInline(trimmed.replace(/^>\s*/gm, ""))}
                   </blockquote>
                 );
               }
 
-              // List items
               const lines = trimmed.split("\n");
               const isList = lines.every((l) => /^\s*([*\-+]|\d+\.)\s+/.test(l));
 
@@ -158,9 +149,7 @@ function FormattedContent({ text }: { text: string }) {
   );
 }
 
-// Inline formatting: **bold**, *italic*, `inline-code`, [links]
 function renderInline(text: string) {
-  // Simple token parser
   const tokens = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g);
 
   return tokens.map((token, i) => {
@@ -168,7 +157,7 @@ function renderInline(text: string) {
       return (
         <code
           key={i}
-          className="bg-slate-800/80 text-cyan-300 font-mono text-[12px] px-1.5 py-0.5 rounded border border-cyan-500/20"
+          className="bg-slate-800 text-slate-200 font-mono text-[12px] px-1.5 py-0.5 rounded border border-slate-700"
         >
           {token.slice(1, -1)}
         </code>
@@ -189,7 +178,7 @@ function renderInline(text: string) {
             href={match[2]}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
+            className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2"
           >
             {match[1]}
           </a>
@@ -216,65 +205,73 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
 
   return (
     <div
-      className={`group relative flex gap-3.5 py-4 px-4 rounded-2xl transition-all duration-200 ${
-        isUser
-          ? "bg-gradient-to-r from-emerald-950/30 to-slate-900/40 border border-emerald-500/20 ml-auto max-w-[85%] md:max-w-[75%]"
-          : "bg-[#0c121e]/80 border border-slate-800/80 w-full"
+      className={`group w-full max-w-3xl mx-auto flex gap-4 py-4 px-3 sm:px-4 rounded-2xl transition-colors ${
+        isUser ? "justify-end" : "justify-start"
       }`}
     >
-      {/* Avatar icon */}
-      <div className="shrink-0 pt-0.5">
-        {isUser ? (
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-900/30">
-            <User className="w-4 h-4" />
+      {/* Assistant Avatar (Shown only on assistant side) */}
+      {!isUser && (
+        <div className="shrink-0 pt-0.5">
+          <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-200 shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
           </div>
-        ) : (
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-600 via-indigo-600 to-emerald-600 flex items-center justify-center text-white shadow-md shadow-cyan-900/30 font-semibold text-xs border border-white/10">
-            {message.personaAvatar || <Bot className="w-4 h-4" />}
-          </div>
-        )}
-      </div>
-
-      {/* Message Body */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-300">
-              {isUser ? "You" : message.personaName || "ZeeNexus AI Agent"}
-            </span>
-            {message.createdAt && (
-              <span className="text-[10px] text-slate-500">{message.createdAt}</span>
-            )}
-            {!isUser && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
-                Agentic
-              </span>
-            )}
-          </div>
-
-          <button
-            onClick={handleCopyMessage}
-            type="button"
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200"
-            title="Copy message"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-          </button>
         </div>
+      )}
 
-        {/* Reasoning and Tools trace */}
+      {/* Message Content Container */}
+      <div
+        className={`relative ${
+          isUser
+            ? "bg-[#1f293d] text-slate-100 rounded-3xl px-4 py-2.5 max-w-[85%] sm:max-w-[75%]"
+            : "flex-1 min-w-0"
+        }`}
+      >
+        {/* Reasoning and Tools trace (collapsible) */}
         {!isUser && message.reasoningSteps && message.reasoningSteps.length > 0 && (
           <ReasoningCard steps={message.reasoningSteps} isStreaming={message.isStreaming} />
         )}
 
-        {/* Formatted Content */}
+        {/* Text Body */}
         <FormattedContent text={message.content} />
 
         {/* Streaming Cursor */}
         {message.isStreaming && (
-          <span className="inline-block w-2 h-4 ml-1 bg-emerald-400 animate-pulse align-middle" />
+          <span className="inline-block w-2 h-4 ml-1 bg-slate-300 animate-pulse align-middle" />
+        )}
+
+        {/* Copy action on assistant message hover */}
+        {!isUser && !message.isStreaming && message.content && (
+          <div className="mt-2 flex items-center gap-2 text-slate-400">
+            <button
+              onClick={handleCopyMessage}
+              type="button"
+              className="p-1 rounded-md hover:bg-slate-800 hover:text-slate-200 transition-colors text-xs flex items-center gap-1"
+              title="Copy message"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-[11px] text-emerald-400">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span className="text-[11px]">Copy</span>
+                </>
+              )}
+            </button>
+          </div>
         )}
       </div>
+
+      {/* User Avatar (Optional on user side) */}
+      {isUser && (
+        <div className="shrink-0 pt-0.5 hidden sm:block">
+          <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-slate-200 text-xs">
+            <User className="w-3.5 h-3.5" />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { AGENT_TOOLS, executeTool } from "@/lib/agent/tools";
-import { AGENT_PERSONAS, AgentPersonaId } from "@/lib/agent/prompts";
-import { PORTFOLIO_DATA } from "@/lib/agent/portfolio-data";
+import { CHAT_MODES, ModelPersonaId } from "@/lib/agent/prompts";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 export const runtime = "nodejs";
@@ -13,70 +12,72 @@ interface ChatRequestBody {
     role: "user" | "assistant" | "system";
     content: string;
   }>;
-  personaId?: AgentPersonaId;
+  personaId?: ModelPersonaId;
   apiKey?: string;
   model?: string;
 }
 
-// Fallback intelligent simulation when no OpenAI API key is supplied
-function generateSimulationResponse(userPrompt: string, personaId: AgentPersonaId) {
+// Fallback response when no OpenAI API key is supplied
+function generateSimulationResponse(userPrompt: string, personaId: ModelPersonaId) {
   const q = userPrompt.toLowerCase();
-  const persona = AGENT_PERSONAS[personaId] || AGENT_PERSONAS.zeenexus_core;
+  const persona = CHAT_MODES[personaId] || CHAT_MODES.default_assistant;
 
   let toolName = "";
   let toolArgs = "{}";
   let toolResult = "";
   let responseText = "";
 
-  if (q.includes("skill") || q.includes("stack") || q.includes("python") || q.includes("next") || q.includes("react") || q.includes("agent")) {
-    toolName = "search_portfolio";
-    toolArgs = JSON.stringify({ query: "skills" });
-    toolResult = JSON.stringify({
-      developer: PORTFOLIO_DATA.developer.name,
-      skills: PORTFOLIO_DATA.developer.skills,
-    }, null, 2);
+  if (q.includes("python") || q.includes("code") || q.includes("script") || q.includes("function") || q.includes("javascript") || q.includes("typescript")) {
+    toolName = "execute_code_sandbox";
+    toolArgs = JSON.stringify({ language: "python", code: "print('Hello from OpenChat AI!')" });
+    toolResult = `[Sandbox Simulation: python]\nStatus: OK\nOutput: Code parsed and validated.`;
 
-    responseText = `### 🚀 Rana Zeeshan's Technical Strengths & Skills\n\n` +
-      `As **ZeeNexus Core Agent**, I queried Rana Zeeshan's technical portfolio data:\n\n` +
-      `* **Agentic AI & LLMs**: ReAct Autonomous Architectures, OpenAI Tool Calling (GPT-4o/GPT-4o-mini), Multi-Agent Systems, LangChain/LlamaIndex paradigms.\n` +
-      `* **Modern Frontend**: Next.js 14/15 (App Router), React.js, TypeScript, Tailwind CSS, Responsive Glassmorphic UI/UX.\n` +
-      `* **Backend & Systems**: Python (AI Pipelines & Automation), Node.js Serverless APIs, SSE Streaming, Vercel & GitHub Actions.\n\n` +
-      `> **Interactive Demo Mode**: This response was generated via local simulation. To enable live GPT-4o streaming, add your \`OPENAI_API_KEY\` in \`.env.local\` or click the **Key Settings** button above!`;
-  } else if (q.includes("project") || q.includes("work") || q.includes("portfolio")) {
-    toolName = "search_portfolio";
-    toolArgs = JSON.stringify({ query: "projects" });
-    toolResult = JSON.stringify({ projects: PORTFOLIO_DATA.projects }, null, 2);
-
-    responseText = `### 📂 Featured Projects by Rana Zeeshan\n\n` +
-      `Here are the flagship projects identified in the portfolio database:\n\n` +
-      `1. **ZeeNexus OpenChat AI**\n` +
-      `   * **Tech**: Next.js, React, TypeScript, Tailwind CSS, OpenAI API, Python\n` +
-      `   * **Features**: Autonomous tool-calling, ReAct reasoning visualization, SSE streaming, Vercel & GitHub deployment ready.\n\n` +
-      `2. **Autonomous Python Agent Framework**\n` +
-      `   * **Tech**: Python 3, OpenAI SDK, AsyncIO, JSON Schema\n` +
-      `   * **Features**: Modular ReAct agent execution loop with automated function execution.\n\n` +
-      `3. **Next.js AI Enterprise Dashboard**\n` +
-      `   * **Tech**: Next.js, TypeScript, Tailwind CSS, Lucide React\n` +
-      `   * **Features**: Real-time agent monitoring and token telemetry.\n\n` +
-      `Feel free to ask for architectural deep-dives on any of these systems!`;
+    responseText = `Here is a clean implementation based on your request:\n\n` +
+      `\`\`\`python\n` +
+      `def solve_task(data: list) -> dict:\n` +
+      `    """\n` +
+      `    Processes input data and returns structured metrics.\n` +
+      `    """\n` +
+      `    if not data:\n` +
+      `        return {"status": "empty", "total": 0}\n` +
+      `    \n` +
+      `    total = sum(data)\n` +
+      `    average = total / len(data)\n` +
+      `    return {\n` +
+      `        "status": "success",\n` +
+      `        "count": len(data),\n` +
+      `        "total": total,\n` +
+      `        "average": average\n` +
+      `    }\n\n` +
+      `# Example usage:\n` +
+      `sample = [10, 25, 45, 80, 100]\n` +
+      `print(solve_task(sample))\n` +
+      `\`\`\`\n\n` +
+      `### Key Points:\n` +
+      `- **Type Annotations**: Explicit type hints improve code maintainability.\n` +
+      `- **Defensive Handling**: Checks for empty inputs to avoid division by zero.\n` +
+      `- **Performance**: Linear $O(n)$ complexity.\n\n` +
+      `> 💡 *Note: To stream live answers directly from OpenAI GPT-4o, add your \`OPENAI_API_KEY\` in \`.env.local\` or click the Key icon in the top header.*`;
+  } else if (q.includes("calculate") || q.includes("+") || q.includes("*") || q.includes("^") || q.includes("/")) {
+    toolName = "calculate_expression";
+    toolArgs = JSON.stringify({ expression: "2 ** 16" });
+    toolResult = `Result = 65536`;
+    responseText = `The calculated result is:\n\n\`\`\`text\n${toolResult}\n\`\`\`\n\nIs there anything else you would like to compute or analyze?`;
   } else if (q.includes("time") || q.includes("date")) {
     toolName = "get_system_time";
     toolArgs = JSON.stringify({ timezone: "Local" });
     const now = new Date();
     toolResult = JSON.stringify({ time: now.toLocaleString(), iso: now.toISOString() });
-    responseText = `The current system time retrieved by the agent is: **${now.toLocaleString()}**.\n\nAll agent operations and timestamps are synchronized.`;
-  } else if (q.includes("calculate") || q.includes("+") || q.includes("*") || q.includes("^")) {
-    toolName = "calculate_expression";
-    toolArgs = JSON.stringify({ expression: "2 ** 16" });
-    toolResult = `Result = 65536`;
-    responseText = `The calculation was executed using the agentic arithmetic tool:\n\n\`\`\`text\n${toolResult}\n\`\`\`\n\nMathematical and logic expressions are safely evaluated within the agent execution loop.`;
+    responseText = `The current system time is **${now.toLocaleString()}** (${Intl.DateTimeFormat().resolvedOptions().timeZone}).`;
   } else {
-    responseText = `Greetings! I am **${persona.name}** (${persona.tagline}).\n\n` +
-      `I am equipped with autonomous agent capabilities, including:\n` +
-      `- **Tool Calling**: Querying Rana Zeeshan's portfolio, executing simulated code, and fetching system telemetry.\n` +
-      `- **ReAct Reasoning**: Transparent step-by-step thinking before delivering results.\n` +
-      `- **Multi-Persona Specialization**: Switch between Code Architect, Portfolio Ambassador, and Researcher modes.\n\n` +
-      `> **Tip**: Configure your \`OPENAI_API_KEY\` in \`.env.local\` or click **Key Settings** in the header to unlock live OpenAI completions. What would you like to explore?`;
+    responseText = `Hello! I'm **${persona.name}**, your AI assistant.\n\n` +
+      `I can help you with:\n` +
+      `- 💻 **Writing & Debugging Code** (Python, TypeScript, React, Next.js, and more)\n` +
+      `- 🧠 **Explaining Complex Concepts** & problem solving\n` +
+      `- ✍️ **Drafting Documents**, emails, and articles\n` +
+      `- ⚡ **Executing Tools & Calculations**\n\n` +
+      `How can I assist you today?\n\n` +
+      `> 🔑 *To connect to live OpenAI GPT-4o / GPT-4o-mini models, click the **Key Settings** button at the top right or set \`OPENAI_API_KEY\` in \`.env.local\`.*`;
   }
 
   return { toolName, toolArgs, toolResult, responseText };
@@ -85,37 +86,24 @@ function generateSimulationResponse(userPrompt: string, personaId: AgentPersonaI
 export async function POST(req: NextRequest) {
   try {
     const body: ChatRequestBody = await req.json();
-    const { messages, personaId = "zeenexus_core", apiKey: clientApiKey, model = "gpt-4o-mini" } = body;
+    const { messages, personaId = "default_assistant", apiKey: clientApiKey, model = "gpt-4o-mini" } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "Messages array is required." }, { status: 400 });
     }
 
     const activeApiKey = clientApiKey?.trim() || process.env.OPENAI_API_KEY?.trim();
-    const persona = AGENT_PERSONAS[personaId] || AGENT_PERSONAS.zeenexus_core;
+    const persona = CHAT_MODES[personaId] || CHAT_MODES.default_assistant;
     const latestUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content || "";
 
     const encoder = new TextEncoder();
 
-    // 1. IF NO API KEY IS CONFIGURED: Return an intelligent simulated streaming SSE response
+    // 1. Fallback when no API Key is provided
     if (!activeApiKey) {
       const sim = generateSimulationResponse(latestUserMessage, personaId);
 
       const stream = new ReadableStream({
         async start(controller) {
-          // Emit initial thinking/reasoning state
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "reasoning",
-                thought: `[Persona: ${persona.name}] Evaluating prompt: "${latestUserMessage.slice(0, 60)}..."`,
-              })}\n\n`
-            )
-          );
-
-          await new Promise((r) => setTimeout(r, 400));
-
-          // If a tool was triggered in simulation
           if (sim.toolName) {
             controller.enqueue(
               encoder.encode(
@@ -127,7 +115,7 @@ export async function POST(req: NextRequest) {
               )
             );
 
-            await new Promise((r) => setTimeout(r, 600));
+            await new Promise((r) => setTimeout(r, 300));
 
             controller.enqueue(
               encoder.encode(
@@ -139,10 +127,9 @@ export async function POST(req: NextRequest) {
               )
             );
 
-            await new Promise((r) => setTimeout(r, 300));
+            await new Promise((r) => setTimeout(r, 200));
           }
 
-          // Stream chunks of text
           const words = sim.responseText.split(" ");
           for (let i = 0; i < words.length; i++) {
             const chunk = (i === 0 ? "" : " ") + words[i];
@@ -168,13 +155,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 2. LIVE OPENAI API KEY CONFIGURED: Real Agentic ReAct Streaming with OpenAI SDK
+    // 2. Live OpenAI API Streaming
     const openai = new OpenAI({ apiKey: activeApiKey });
 
     const formattedMessages: ChatCompletionMessageParam[] = [
       {
         role: "system",
-        content: `${persona.systemPrompt}\n\nCurrent Date & Local Context: ${new Date().toISOString()}`,
+        content: `${persona.systemPrompt}\n\nCurrent Timestamp: ${new Date().toISOString()}`,
       },
       ...messages.map((m) => ({
         role: m.role as "user" | "assistant" | "system",
@@ -185,16 +172,6 @@ export async function POST(req: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                type: "reasoning",
-                thought: `Connecting to OpenAI (${model}). Activating ${persona.name}...`,
-              })}\n\n`
-            )
-          );
-
-          // Step 1: Initial call with tools
           const response = await openai.chat.completions.create({
             model: model || "gpt-4o-mini",
             messages: formattedMessages,
@@ -212,7 +189,6 @@ export async function POST(req: NextRequest) {
           for await (const chunk of response) {
             const delta = chunk.choices[0]?.delta;
 
-            // Direct text content
             if (delta?.content) {
               controller.enqueue(
                 encoder.encode(
@@ -221,7 +197,6 @@ export async function POST(req: NextRequest) {
               );
             }
 
-            // Accumulate tool calls
             if (delta?.tool_calls) {
               for (const tc of delta.tool_calls) {
                 const index = tc.index ?? 0;
@@ -243,23 +218,21 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // If tool calls were made, execute them and perform second-pass completion
           if (toolCallsAcc.length > 0) {
-            const toolMessages: ChatCompletionMessageParam[] = [];
-
-            // Add assistant tool_calls message
-            toolMessages.push({
-              role: "assistant",
-              content: null,
-              tool_calls: toolCallsAcc.map((tc) => ({
-                id: tc.id,
-                type: "function" as const,
-                function: {
-                  name: tc.name,
-                  arguments: tc.arguments,
-                },
-              })),
-            });
+            const toolMessages: ChatCompletionMessageParam[] = [
+              {
+                role: "assistant",
+                content: null,
+                tool_calls: toolCallsAcc.map((tc) => ({
+                  id: tc.id,
+                  type: "function" as const,
+                  function: {
+                    name: tc.name,
+                    arguments: tc.arguments,
+                  },
+                })),
+              },
+            ];
 
             for (const tc of toolCallsAcc) {
               controller.enqueue(
@@ -291,7 +264,6 @@ export async function POST(req: NextRequest) {
               });
             }
 
-            // Second pass: Send tool results back to synthesize final response
             const secondPassStream = await openai.chat.completions.create({
               model: model || "gpt-4o-mini",
               messages: [...formattedMessages, ...toolMessages],
