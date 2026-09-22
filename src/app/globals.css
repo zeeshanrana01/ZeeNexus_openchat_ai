@@ -110,3 +110,57 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   border: 1px solid rgba(56, 189, 248, 0.2);
 }
+
+/* Modern AI Ambient Fluid Orbs */
+@keyframes orbSlow {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate3d(40px, -45px, 0) scale(1.15) rotate(12deg);
+  }
+  66% {
+    transform: translate3d(-35px, 35px, 0) scale(0.92) rotate(-8deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes orbReverse {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate3d(-45px, 40px, 0) scale(1.12) rotate(-15deg);
+  }
+  66% {
+    transform: translate3d(35px, -30px, 0) scale(0.95) rotate(10deg);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes orbPulse {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.14;
+  }
+  50% {
+    transform: translate3d(20px, -20px, 0) scale(1.22);
+    opacity: 0.24;
+  }
+}
+
+.animate-orb-slow {
+  animation: orbSlow 22s ease-in-out infinite alternate;
+}
+
+.animate-orb-reverse {
+  animation: orbReverse 26s ease-in-out infinite alternate;
+}
+
+.animate-orb-pulse {
+  animation: orbPulse 18s ease-in-out infinite;
+}

@@ -8,6 +8,7 @@ import { ChatInput } from "@/components/ChatInput";
 import { ApiKeyModal } from "@/components/ApiKeyModal";
 import { ReasoningStep } from "@/components/ReasoningCard";
 import { CHAT_MODES, ModelPersonaId } from "@/lib/agent/prompts";
+import { AiBackground } from "@/components/AiBackground";
 import { Sparkles, Code2, Compass, PenTool, Lightbulb } from "lucide-react";
 
 export default function Home() {
@@ -294,7 +295,10 @@ export default function Home() {
   const currentMode = CHAT_MODES[currentPersonaId] || CHAT_MODES.default_assistant;
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0e131f]">
+    <div className="flex h-screen w-screen overflow-hidden relative bg-[#090d16]">
+      {/* Dynamic Animated AI Neural Background */}
+      <AiBackground />
+
       {/* Sidebar (ChatGPT style) */}
       <Sidebar
         isOpen={isSidebarOpen}
@@ -309,7 +313,7 @@ export default function Home() {
       />
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-full relative">
+      <div className="flex-1 flex flex-col min-w-0 h-full relative z-10">
         {/* Minimal Header */}
         <Header
           currentPersonaId={currentPersonaId}
@@ -330,16 +334,17 @@ export default function Home() {
               /* Clean ChatGPT / Gemini Empty State */
               <div className="min-h-[55vh] flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in duration-200">
                 <div className="space-y-3">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-slate-800 border border-slate-700 shadow-md text-emerald-400 mb-2">
-                    <Sparkles className="w-6 h-6" />
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-3xl bg-slate-900/80 border border-slate-700/80 shadow-2xl backdrop-blur-xl text-emerald-400 mb-2 relative group">
+                    <div className="absolute inset-0 rounded-3xl bg-emerald-500/20 blur-xl group-hover:bg-emerald-500/30 transition-all" />
+                    <Sparkles className="w-7 h-7 relative z-10" />
                   </div>
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                  <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-white drop-shadow-sm">
                     What can I help with today?
                   </h1>
                 </div>
 
-                {/* 4 Clean Prompt Cards (ChatGPT / Gemini style) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl text-left">
+                {/* 4 Clean Prompt Cards with Glassmorphic Blur (ChatGPT / Gemini style) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full max-w-xl text-left">
                   <button
                     type="button"
                     onClick={() => handleSubmit("Write a Python script to fetch data from a REST API and parse JSON.")}
