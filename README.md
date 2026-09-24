@@ -12,8 +12,12 @@ FILE: README.md
 [![Python](https://img.shields.io/badge/Python-3.14-yellow?style=for-the-badge&logo=python)](https://python.org/)
 [![Deploy with Vercel](https://img.shields.io/badge/Vercel-Deploy-black?style=for-the-badge&logo=vercel)](https://vercel.com/)
 
-> **An autonomous, portfolio-integrated Agentic AI OpenChat platform built by [Rana Zeeshan](https://github.com) (`ZeeNexus`).**  
+> **An autonomous, portfolio-integrated Agentic AI OpenChat platform built by [Rana Zeeshan](https://github.com/zeeshanrana01) (`ZeeNexus`).**  
 > Engineered with **Next.js (App Router)**, **React**, **TypeScript**, **Tailwind CSS**, and **OpenAI API**, alongside a dedicated **Autonomous Python Agent companion module**.
+
+<p align="center">
+  <img src="demo.gif" alt="ZeeNexus OpenChat AI Interactive Preview" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+</p>
 
 ---
 
